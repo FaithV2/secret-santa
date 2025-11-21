@@ -15,6 +15,7 @@ export default function SecretSantaApp() {
   const [amount, setAmount] = useState(300);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [currentItem, setCurrentItem] = useState("");
+  const [currentShop, setCurrentShop] = useState("");
   const [loginName, setLoginName] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -40,7 +41,7 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
       const now = new Date();
       const diff = drawTime - now;
       if (diff <= 0) {
-        setTimeLeft("Draw is live! You can see your assignment.");
+        setTimeLeft("Draw is live! Click below to see who you got!");
       } else {
         const hrs = Math.floor(diff / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -61,8 +62,10 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
 
   const handleAddWishlistItem = () => {
     if (!currentItem.trim()) return;
-    setWishlistItems([...wishlistItems, currentItem.trim()]);
+    const item = currentShop ? `${currentItem.trim()} (Shop: ${currentShop.trim()})` : currentItem.trim();
+    setWishlistItems([...wishlistItems, item]);
     setCurrentItem("");
+    setCurrentShop("");
   };
 
   const handleClearWishlist = () => {
@@ -78,6 +81,7 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
       setName("");
       setWishlistItems([]);
       setCurrentItem("");
+      setCurrentShop("");
       setSaved(true);
       alert("Participant saved successfully!");
     } catch (err) {
@@ -159,8 +163,7 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
 
       {/* Header */}
       <div style={{ ...cardStyle, background: "#ddd", textAlign: "center" }}>
-        <h1 style={{ margin: "0" }}>BHG Secret Santa 2025</h1>
-        
+        <h1>BHG Secret Santa 2025</h1>
         <p>Gift Budget: P300 / P500 / P1000</p>
         <p>Draw Names: November 21, 2025 at 4 PM</p>
         <p>Event Date: December 13, 2025</p>
@@ -177,7 +180,8 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
           <option value={1000}>P1000</option>
         </select>
         <div style={{ marginTop: "10px" }}>
-          <input placeholder="Add wishlist item" value={currentItem} onChange={e => setCurrentItem(e.target.value)} style={inputStyle} />
+          <input placeholder="Wishlist Item" value={currentItem} onChange={e => setCurrentItem(e.target.value)} style={inputStyle} />
+          <input placeholder="Optional Shop" value={currentShop} onChange={e => setCurrentShop(e.target.value)} style={inputStyle} />
           <button onClick={handleAddWishlistItem} style={buttonStyle}>Add Item</button>
           <button onClick={handleClearWishlist} style={{ ...buttonStyle, background: "#999", marginLeft: "5px" }}>Clear</button>
         </div>
@@ -186,30 +190,21 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
             {wishlistItems.map((item, idx) => <li key={idx}>- {item}</li>)}
           </ul>
         )}
-        <button onClick={handleAddParticipant} style={buttonStyle}>Save Participant</button>
+        <button onClick={handleAddParticipant} style={buttonStyle}>Save </button>
       </div>
 
-      {/* Generate Assignments */}
+      {/* Draw Section */}
       <div style={cardStyle}>
-        <h2 style={headerStyle}>Generate Assignments</h2>
-        <button onClick={handleGenerateAssignments} style={buttonStyle} disabled={loading}>
-          {loading ? "Generating..." : "Generate Secret Santa"}
-        </button>
-      </div>
-
-      {/* Participant Login */}
-      <div style={cardStyle}>
-        <h2 style={headerStyle}>Login to See Your Assignment</h2>
+        <h2 style={headerStyle}>Who You Got</h2>
         {!myAssignment ? (
           <>
             <input placeholder="Enter your name" value={loginName} onChange={e => setLoginName(e.target.value)} style={inputStyle} />
-            <button onClick={handleLogin} style={buttonStyle}>See Your Assignment</button>
+            <button onClick={handleLogin} style={buttonStyle}>See Who You Got</button>
           </>
         ) : (
           <div>
-            <h3>Your Secret Santa Assignment:</h3>
+            <h3>You Got: {myAssignment.receiver}</h3>
             <p>
-              You will give a gift to: <strong>{myAssignment.receiver}</strong><br />
               Wishlist:
               <ul style={wishlistListStyle}>
                 {Array.isArray(myAssignment.receiverWishlist) && myAssignment.receiverWishlist.length > 0
@@ -222,36 +217,23 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
         )}
       </div>
 
-      {/* Admin Login */}
+      {/* Admin View */}
       {!isAdmin && (
         <div style={cardStyle}>
           <h2 style={headerStyle}>Admin Login</h2>
-          <input
-            type="password"
-            placeholder="Enter admin password"
-            value={adminPassword}
-            onChange={e => setAdminPassword(e.target.value)}
-            style={inputStyle}
-          />
-          <button onClick={handleAdminLogin} style={buttonStyle}>Login as Admin</button>
+          <input type="password" placeholder="Enter admin password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} style={inputStyle} />
+          <button onClick={handleAdminLogin} style={buttonStyle}>Who Everyone Got</button>
         </div>
       )}
-
-      {/* Admin View */}
       {isAdmin && (
         <div style={cardStyle}>
-          <h2 style={headerStyle}>All Participants & Assignments (Admin View)</h2>
-          <ul style={{ paddingLeft: "0", listStyle: "none" }}>
+          <h2 style={headerStyle}>Who Everyone Got (Admin)</h2>
+          <ul style={{ listStyle: "none", paddingLeft: 0 }}>
             {participants.map(p => {
               const assignment = assignments.find(a => a.giverId === p.id);
               return (
-                <li key={p.id} style={{ marginBottom: "10px", padding: "10px", borderBottom: "1px solid #ccc" }}>
-                  <strong>{p.name}</strong> - P{p.amount} - Wishlist: {p.wishlist.join(", ")} <br />
-                  {assignment ? (
-                    <>Buying for: <strong>{assignment.receiver}</strong> - Wishlist: {assignment.receiverWishlist.join(", ")}</>
-                  ) : (
-                    <em>Assignment not generated</em>
-                  )}
+                <li key={p.id}>
+                  <strong>{p.name}</strong> → {assignment ? assignment.receiver : "Not drawn yet"}
                 </li>
               );
             })}
