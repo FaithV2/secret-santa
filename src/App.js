@@ -34,7 +34,7 @@ export default function SecretSantaApp() {
 
   // Countdown to draw
   const [timeLeft, setTimeLeft] = useState("");
-  const drawTime = new Date("2025-11-21T16:00:00"); // 4 PM draw
+const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
