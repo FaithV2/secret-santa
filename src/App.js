@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { addOrUpdateParticipant, getParticipants, saveAssignment, getAssignments } from "./firebase";
-import { assignSecretSantaByCategory } from "./santaLogic";
+import { drawForSelf } from "./santaLogic";
 
 // Snowflake component
 const Snowflake = ({ style }) => <div style={{ ...style, position: "absolute", top: "-10px" }}>❄️</div>;
@@ -35,7 +35,7 @@ export default function SecretSantaApp() {
 
   // Countdown to draw
   const [timeLeft, setTimeLeft] = useState("");
-const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
+  const drawTime = new Date("2025-11-21T17:00:00");
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -90,40 +90,22 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
     }
   };
 
-  const handleGenerateAssignments = async () => {
-    const groups = {};
-    participants.forEach(p => {
-      if (!groups[p.amount]) groups[p.amount] = [];
-      groups[p.amount].push(p);
-    });
-    for (const [amt, group] of Object.entries(groups)) {
-      if (group.length < 2) return alert(`Amount group P${amt} must have at least 2 participants!`);
-    }
-
-    setLoading(true);
-    try {
-      const newAssignments = assignSecretSantaByCategory(participants);
-      setAssignments(newAssignments);
-      await Promise.all(
-        newAssignments.map(a => saveAssignment(a.giverId, a.receiverId, a.amount, a.receiverWishlist, a.receiver))
-      );
-      alert("Assignments generated and saved!");
-    } catch (err) {
-      console.error(err);
-      alert("Error generating assignments");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = () => {
+  // ------------------- Self Draw -------------------
+  const handleSelfDraw = async () => {
     const participant = participants.find(p => p.name.toLowerCase() === loginName.toLowerCase());
     if (!participant) return alert("Name not found!");
     const now = new Date();
     if (now < drawTime) return alert("The draw hasn't started yet!");
-    const assignment = assignments.find(a => a.giverId === participant.id);
-    if (!assignment) return alert("Assignment not generated yet!");
-    setMyAssignment(assignment);
+
+    const result = drawForSelf(participant.id, participants, assignments);
+
+    if (result.error) return alert(result.error);
+    if (result.already) return setMyAssignment(result.already);
+
+    await saveAssignment(result.giverId, result.receiverId, result.amount, result.receiverWishlist, result.receiver);
+    const updatedAssignments = await getAssignments();
+    setAssignments(updatedAssignments);
+    setMyAssignment(result);
   };
 
   const handleAdminLogin = () => {
@@ -135,15 +117,8 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
     }
   };
 
-  // Styling
-  const cardStyle = {
-    background: "#f8f8f8",
-    padding: "20px",
-    margin: "20px 0",
-    borderRadius: "10px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-    position: "relative"
-  };
+  // ------------------- Styling -------------------
+  const cardStyle = { background: "#f8f8f8", padding: "20px", margin: "20px 0", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", position: "relative" };
   const headerStyle = { textAlign: "center", color: "#333", marginBottom: "15px" };
   const inputStyle = { padding: "8px", borderRadius: "6px", border: "1px solid #ccc", marginRight: "5px", width: "200px" };
   const buttonStyle = { padding: "8px 15px", borderRadius: "6px", border: "none", background: "#666", color: "#fff", cursor: "pointer", marginTop: "10px" };
@@ -155,10 +130,7 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
         <Snowflake key={i} style={{ left: flake.left, fontSize: flake.fontSize, animation: `fall ${flake.animationDuration} linear infinite` }} />
       ))}
       <style>{`
-        @keyframes fall {
-          0% { transform: translateY(-10px); }
-          100% { transform: translateY(100vh); }
-        }
+        @keyframes fall { 0% { transform: translateY(-10px); } 100% { transform: translateY(100vh); } }
       `}</style>
 
       {/* Header */}
@@ -168,11 +140,13 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
         <p>Draw Names: November 21, 2025 at 4 PM</p>
         <p>Event Date: December 13, 2025</p>
         <h2>Countdown: {timeLeft}</h2>
+        <p style={{ fontSize: "0.9em", color: "#555" }}>🎄 Welcome! Add yourself below and see your Secret Santa once the draw is live.</p>
       </div>
 
       {/* Add Participant */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>Add Yourself</h2>
+        <p style={{ fontSize: "0.9em", color: "#555" }}>Enter your name, select your gift budget, and add at least one wishlist item.</p>
         <input placeholder="Your Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
         <select value={amount} onChange={e => setAmount(Number(e.target.value))} style={inputStyle}>
           <option value={300}>P300</option>
@@ -190,16 +164,17 @@ const drawTime = new Date("2025-11-21T17:00:00"); // 5 PM draw
             {wishlistItems.map((item, idx) => <li key={idx}>- {item}</li>)}
           </ul>
         )}
-        <button onClick={handleAddParticipant} style={buttonStyle}>Save </button>
+        <button onClick={handleAddParticipant} style={buttonStyle}>Save</button>
       </div>
 
-      {/* Draw Section */}
+      {/* Self Draw Section */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>Who You Got</h2>
+        <p style={{ fontSize: "0.9em", color: "#555" }}>Once the draw is live, enter your name below to draw your Secret Santa within your budget group.</p>
         {!myAssignment ? (
           <>
             <input placeholder="Enter your name" value={loginName} onChange={e => setLoginName(e.target.value)} style={inputStyle} />
-            <button onClick={handleLogin} style={buttonStyle}>See Who You Got</button>
+            <button onClick={handleSelfDraw} style={buttonStyle}>Draw Your Secret Santa</button>
           </>
         ) : (
           <div>
