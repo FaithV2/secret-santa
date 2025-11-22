@@ -1,4 +1,3 @@
-// firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "firebase/firestore";
 
@@ -15,7 +14,6 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // ---------------- Participants ----------------
-
 export const addOrUpdateParticipant = async (name, amount, wishlist) => {
   const participantId = name.toLowerCase();
   return await setDoc(doc(db, "participants", participantId), { name, amount, wishlist });
@@ -26,14 +24,12 @@ export const getParticipants = async () => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-// Optional: delete all participants (admin/testing)
 export const clearParticipants = async () => {
   const snapshot = await getDocs(collection(db, "participants"));
   await Promise.all(snapshot.docs.map(d => deleteDoc(doc(db, "participants", d.id))));
 };
 
 // ---------------- Assignments ----------------
-
 export const saveAssignment = async (giverId, receiverId, amount, receiverWishlist, receiverName) => {
   return await setDoc(doc(db, "assignments", giverId), {
     giverId,
