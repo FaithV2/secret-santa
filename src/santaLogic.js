@@ -1,33 +1,30 @@
-// santaLogic.js
-export function assignSecretSantaByCategory(participants) {
-  const groups = {};
+// Self-draw for participants within the same amount group
+export function drawForSelf(giverId, participants, assignments) {
+  // Check if already assigned
+  const existing = assignments.find(a => a.giverId === giverId);
+  if (existing) return { already: existing };
 
-  // Group participants by amount
-  participants.forEach(p => {
-    if (!groups[p.amount]) groups[p.amount] = [];
-    groups[p.amount].push(p);
-  });
+  // Find the giver
+  const giver = participants.find(p => p.id === giverId);
+  if (!giver) return { error: "Participant not found!" };
 
-  const allAssignments = [];
+  // Filter participants in the same amount group, excluding self and already assigned
+  const available = participants.filter(p =>
+    p.amount === giver.amount &&
+    p.id !== giverId &&
+    !assignments.some(a => a.receiverId === p.id)
+  );
 
-  Object.values(groups).forEach(group => {
-    if (group.length < 2) return; // Must have at least 2 participants per group
+  if (available.length === 0) return { error: "No available participants left in your amount group!" };
 
-    const shuffled = [...group].sort(() => Math.random() - 0.5);
+  const randomIndex = Math.floor(Math.random() * available.length);
+  const receiver = available[randomIndex];
 
-    for (let i = 0; i < shuffled.length; i++) {
-      const giver = shuffled[i];
-      const receiver = shuffled[(i + 1) % shuffled.length]; // Circular assignment
-      allAssignments.push({
-        giverId: giver.id,
-        giver: giver.name,
-        receiverId: receiver.id,
-        receiver: receiver.name,
-        receiverWishlist: Array.isArray(receiver.wishlist) ? receiver.wishlist : [receiver.wishlist],
-        amount: receiver.amount
-      });
-    }
-  });
-
-  return allAssignments;
+  return {
+    giverId,
+    receiverId: receiver.id,
+    receiver: receiver.name,
+    receiverWishlist: Array.isArray(receiver.wishlist) ? receiver.wishlist : [receiver.wishlist],
+    amount: receiver.amount
+  };
 }
