@@ -116,7 +116,7 @@ export default function SecretSantaApp() {
 
       {/* Instructions */}
       <div style={cardStyle}>
-        <h2 style={headerStyle}>How to Use This Secret Santa App 🎄</h2>
+        <h2 style={headerStyle}>How to Use This Secret Santa 🎄</h2>
         <ul>
           <li>1. Add yourself using the form below (name, budget, wishlist).</li>
           <li>2. On the draw day, scroll to the "Who You Got" section.</li>
