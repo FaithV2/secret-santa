@@ -2,32 +2,39 @@ import { useState, useEffect } from "react";
 import { addOrUpdateParticipant, getParticipants, saveAssignment, getAssignments } from "./firebase";
 import { drawForSelf } from "./santaLogic";
 
+// ❄️ Snowflake visual component
 const Snowflake = ({ style }) => (
   <div style={{ ...style, position: "absolute", top: "-10px" }}>❄️</div>
 );
 
 export default function SecretSantaApp() {
-  const [participants, setParticipants] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [myAssignment, setMyAssignment] = useState(null);
 
+  // 🎁 APP STATE
+  const [participants, setParticipants] = useState([]); // list of all participants
+  const [assignments, setAssignments] = useState([]); // who picked who
+  const [myAssignment, setMyAssignment] = useState(null); // logged-in user's result
+
+  // 👤 ADD SELF FORM
   const [name, setName] = useState("");
-  const [amount, setAmount] = useState(300);
+  const [amount, setAmount] = useState(300); // gift budget
   const [wishlistItems, setWishlistItems] = useState([]);
   const [currentItem, setCurrentItem] = useState("");
   const [currentShop, setCurrentShop] = useState("");
 
+  // 🔐 LOGIN FOR DRAW
   const [loginName, setLoginName] = useState("");
   const [saved, setSaved] = useState(false);
 
+  // 🔧 ADMIN PANEL
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdminAllowed, setIsAdminAllowed] = useState(false);
   const correctPassword = "BHG@20251";
 
-  // Snowflakes
+  // ❄️ SNOWFLAKE EFFECT
   const [snowflakes, setSnowflakes] = useState([]);
   useEffect(() => {
+    // generates random snowflakes on load
     const flakes = Array.from({ length: 50 }).map(() => ({
       left: Math.random() * 100 + "%",
       animationDuration: 5 + Math.random() * 10 + "s",
@@ -36,11 +43,12 @@ export default function SecretSantaApp() {
     setSnowflakes(flakes);
   }, []);
 
-  // Countdown
+  // ⏳ COUNTDOWN TIMER UNTIL DRAW
   const [timeLeft, setTimeLeft] = useState("");
   const drawTime = new Date("2025-11-21T17:00:00");
 
   useEffect(() => {
+    // updates countdown every second
     const interval = setInterval(() => {
       const now = new Date();
       const diff = drawTime - now;
@@ -54,10 +62,11 @@ export default function SecretSantaApp() {
         setTimeLeft(`${hrs}h ${mins}m ${secs}s`);
       }
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
-  // Load data
+  // 📥 LOAD PARTICIPANTS + ASSIGNMENTS FROM FIREBASE
   useEffect(() => {
     async function fetchData() {
       setParticipants(await getParticipants());
@@ -66,9 +75,10 @@ export default function SecretSantaApp() {
     fetchData();
   }, []);
 
-  // Wishlist
+  // 📝 ADD WISHLIST ITEM
   const handleAddWishlistItem = () => {
     if (!currentItem.trim()) return;
+
     const item = currentShop
       ? `${currentItem.trim()} (Shop: ${currentShop.trim()})`
       : currentItem.trim();
@@ -78,45 +88,55 @@ export default function SecretSantaApp() {
     setCurrentShop("");
   };
 
+  // 🗑 CLEAR WISHLIST (only before saving)
   const handleClearWishlist = () => {
     if (saved) return alert("Cannot clear wishlist after saving!");
     setWishlistItems([]);
   };
 
-  // Save participant
+  // 💾 SAVE PARTICIPANT TO FIREBASE
   const handleAddParticipant = async () => {
     if (!name || wishlistItems.length === 0)
       return alert("Fill all fields and add at least one wishlist item!");
 
     try {
       await addOrUpdateParticipant(name, amount, wishlistItems);
+
+      // refresh list
       setParticipants(await getParticipants());
+
+      // reset form
       setName("");
       setWishlistItems([]);
       setCurrentItem("");
       setCurrentShop("");
       setSaved(true);
+
       alert("Saved! Scroll down to draw on the day of reveal.");
     } catch {
       alert("Failed to save participant");
     }
   };
 
-  // Draw
+  // 🎰 USER INITIATES THEIR OWN DRAW
   const handleSelfDraw = async () => {
     const participant = participants.find(
       (p) => p.name.toLowerCase() === loginName.toLowerCase()
     );
+
     if (!participant) return alert("Name not found!");
 
     const now = new Date();
     if (now < drawTime) return alert("The draw hasn't started yet!");
 
+    // perform draw via santaLogic.js
     const result = drawForSelf(participant.id, participants, assignments);
 
+    // handle edge cases
     if (result.error) return alert(result.error);
     if (result.already) return setMyAssignment(result.already);
 
+    // save new assignment
     await saveAssignment(
       result.giverId,
       result.receiverId,
@@ -129,7 +149,7 @@ export default function SecretSantaApp() {
     setMyAssignment(result);
   };
 
-  // Admin calculations
+  // 📊 ADMIN CALCULATIONS
   const undrawnParticipants = participants.filter(
     (p) => !assignments.some((a) => a.giverId === p.id)
   );
@@ -138,7 +158,7 @@ export default function SecretSantaApp() {
     (p) => !assignments.some((a) => a.receiverId === p.id)
   );
 
-  // Styles
+  // 🎨 STYLES
   const cardStyle = {
     background: "#f8f8f8",
     padding: "20px",
@@ -175,26 +195,29 @@ export default function SecretSantaApp() {
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", fontFamily: "Segoe UI", color: "#333" }}>
 
-      {/* Instructions */}
+      {/* 📘 Instructions */}
       <div style={{ textAlign: "center", padding: "10px", fontSize: "0.9em", color: "#555" }}>
         ⬇️ Scroll down for steps & drawing ⬇️
       </div>
 
-      {/* HOW TO USE */}
+      {/* 📖 HOW TO USE SECTION */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>How to Use This Secret Santa 🎄</h2>
         <ul>
-          <li>1. Add yourself using the form below.</li>
-          <li>2. On draw day, scroll to "Who You Got".</li>
-          <li>3. Enter your name exactly as saved.</li>
-          <li>4. The app shows who you got + wishlist.</li>
+          <li>1. Add yourself using the form below and wishlist.</li>
+                    <li>2. Choose the amount within your budget.</li>
+
+          <li>3.  scroll to "Who You Got".</li>
+          <li>4. Enter your name exactly as saved.</li>
+          <li>5. The app shows who you got + wishlist.</li>
         </ul>
       </div>
 
-      {/* ADD SELF */}
+      {/* ✍️ ADD YOURSELF FORM */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>Add Yourself</h2>
 
+        {/* Name input */}
         <input
           placeholder="Your Name"
           value={name}
@@ -202,16 +225,21 @@ export default function SecretSantaApp() {
           style={inputStyle}
         />
 
+        {/* Budget selection */}
         <select
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
           style={inputStyle}
         >
+          <option value={100}>P100</option>
+          <option value={150}>P150</option>
+          <option value={200}>P200</option>
           <option value={300}>P300</option>
           <option value={500}>P500</option>
           <option value={1000}>P1000</option>
         </select>
 
+        {/* Wishlist item + shop input */}
         <div style={{ marginTop: "10px" }}>
           <input
             placeholder="Wishlist Item"
@@ -232,6 +260,7 @@ export default function SecretSantaApp() {
           </button>
         </div>
 
+        {/* Show wishlist items */}
         {wishlistItems.length > 0 && (
           <ul>
             {wishlistItems.map((i, idx) => (
@@ -240,17 +269,19 @@ export default function SecretSantaApp() {
           </ul>
         )}
 
+        {/* Save participant */}
         <button onClick={handleAddParticipant} style={buttonStyle}>
           Save
         </button>
       </div>
 
-      {/* DRAW SECTION */}
+      {/* 🎰 DRAW RESULT SECTION */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>Who You Got</h2>
 
         {!myAssignment ? (
           <>
+            {/* Enter your name to draw */}
             <input
               placeholder="Enter your name"
               value={loginName}
@@ -262,6 +293,7 @@ export default function SecretSantaApp() {
             </button>
           </>
         ) : (
+          // Show results
           <div>
             <h3>You Got: {myAssignment.receiver}</h3>
             <ul>
@@ -276,10 +308,11 @@ export default function SecretSantaApp() {
         )}
       </div>
 
-      {/* ADMIN PANEL */}
+      {/* 🔧 ADMIN PANEL */}
       <div style={cardStyle}>
         <h2 style={headerStyle}>Admin</h2>
 
+        {/* Toggle admin panel */}
         <button
           onClick={() => setAdminOpen(!adminOpen)}
           style={{ ...buttonStyle, background: adminOpen ? "#444" : "#666" }}
@@ -287,7 +320,7 @@ export default function SecretSantaApp() {
           {adminOpen ? "Hide Admin Panel" : "Show Admin Panel"}
         </button>
 
-        {/* PASSWORD */}
+        {/* Login to admin */}
         {adminOpen && !isAdminAllowed && (
           <div style={{ marginTop: "15px" }}>
             <input
@@ -310,10 +343,11 @@ export default function SecretSantaApp() {
           </div>
         )}
 
-        {/* ADMIN CONTENT */}
+        {/* Admin tools */}
         {adminOpen && isAdminAllowed && (
           <div style={{ marginTop: "15px" }}>
-            {/* UNDRAWN */}
+
+            {/* People who haven't drawn */}
             <h3>People Who Haven’t Drawn Yet</h3>
             {undrawnParticipants.length === 0 ? (
               <p>Everyone has drawn!</p>
@@ -325,7 +359,7 @@ export default function SecretSantaApp() {
               </ul>
             )}
 
-            {/* UNASSIGNED */}
+            {/* People without a giver */}
             <h3 style={{ marginTop: "20px" }}>People Who Haven’t Been Picked Yet</h3>
             {unassignedReceivers.length === 0 ? (
               <p>Everyone has been assigned!</p>
@@ -337,7 +371,7 @@ export default function SecretSantaApp() {
               </ul>
             )}
 
-            {/* TABLE */}
+            {/* Full assignment table */}
             <h3 style={{ marginTop: "25px" }}>All Assignments</h3>
             {assignments.length === 0 ? (
               <p>No assignments yet.</p>
